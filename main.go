@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 const tailscale_api_base_url = "https://api.tailscale.com/api/v2"
@@ -67,7 +72,7 @@ func IsOauthTokenValid(token string) bool {
 	return true
 }
 
-// This function will always make sure to return a valid token
+// This function will always make sure to return a valid token ( LAME CODE but works!! )
 func GetToken(client_id string, client_secret string) string {
 	token := GetOauthToken(client_id, client_secret)
 	if IsOauthTokenValid(token) {
@@ -127,12 +132,30 @@ func ListAllTailnetDevices(token string) ListDevicesResponse {
 }
 
 func main() {
+
 	client_id := flag.String("client_id", "", "Client ID of the Tailscale Oauth Client")
 	client_secret := flag.String("client_secret", "", "Client Secret of the Tailscale Oauth Client")
 	flag.Parse()
 	if *client_id == "" || *client_secret == "" {
 		log.Fatal("Client ID and Secret are required")
 	}
-	token := GetToken(*client_id, *client_secret)
-	// devices := ListAllTailnetDevices(token)
+	s := server.NewMCPServer(
+		"Tailscale MCP Demo",
+		"0.0.1",
+		server.WithResourceCapabilities(true, true),
+		server.WithLogging(),
+	)
+	listDevices := mcp.NewTool("list-devices", mcp.WithDescription("List All Devices on Your Tailnet"))
+
+	s.AddTool(listDevices, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		token := GetToken(*client_id, *client_secret)
+		devices := ListAllTailnetDevices(token)
+		return mcp.NewToolResultText(
+			fmt.Sprintf("Devices: %v", devices.Devices),
+		), nil
+	})
+
+	if err := server.ServeStdio(s); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

@@ -223,7 +223,7 @@ func main() {
 			server_config := BuildServerConfigToServer(ctx, dns_name, 443, "http://localhost:"+local_address)
 			SetServeConfig(ctx, server_config)
 			return mcp.NewToolResultText(
-				fmt.Sprintf("Server is now exposing %v to the public", local_address),
+				fmt.Sprintf("Server is now exposing %v to the public , You can access it at https://%v", local_address, dns_name),
 			), nil
 		} else {
 			SetServeConfig(ctx, internal.ServeConfig{})
